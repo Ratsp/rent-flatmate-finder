@@ -1,0 +1,224 @@
+### Rent & Flatmate Finder — API test suite
+### Requires the VS Code extension: "REST Client" (humao.rest-client)
+### Click "Send Request" above each block. Run them top-to-bottom.
+### Tokens are captured automatically from responses and reused.
+
+@baseUrl = http://localhost:5000/api
+
+# ============================================================
+# HEALTH
+# ============================================================
+### Health check
+GET {{baseUrl}}/health
+
+# ============================================================
+# AUTH  — register an owner and a tenant, capture their tokens
+# ============================================================
+### Register OWNER
+# @name registerOwner
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "name": "Test Owner",
+  "email": "owner1@test.com",
+  "password": "pass123",
+  "role": "owner"
+}
+
+### Register TENANT
+# @name registerTenant
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "name": "Test Tenant",
+  "email": "tenant1@test.com",
+  "password": "pass123",
+  "role": "tenant"
+}
+
+### Login OWNER (use if already registered)
+# @name loginOwner
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "owner1@test.com",
+  "password": "pass123"
+}
+
+### Login TENANT
+# @name loginTenant
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "tenant1@test.com",
+  "password": "pass123"
+}
+
+### Login ADMIN (seeded account)
+# @name loginAdmin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@test.com",
+  "password": "admin123"
+}
+
+# Capture tokens from whichever calls you ran above:
+@ownerToken = {{registerOwner.response.body.token}}
+@tenantToken = {{registerTenant.response.body.token}}
+@adminToken = {{loginAdmin.response.body.token}}
+
+### Get current user (owner)
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{ownerToken}}
+
+# ============================================================
+# TENANT PROFILE
+# ============================================================
+### Create/update tenant profile
+PUT {{baseUrl}}/tenants/me
+Authorization: Bearer {{tenantToken}}
+Content-Type: application/json
+
+{
+  "preferred_location": "Koramangala Bangalore",
+  "budget_min": 8000,
+  "budget_max": 15000,
+  "room_type_pref": "single",
+  "move_in_date": "2026-08-01"
+}
+
+### Get tenant profile
+GET {{baseUrl}}/tenants/me
+Authorization: Bearer {{tenantToken}}
+
+# ============================================================
+# LISTINGS (owner)
+# ============================================================
+### Owner creates a listing
+# @name createListing
+POST {{baseUrl}}/listings
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{
+  "location": "Koramangala Bangalore",
+  "rent": 12000,
+  "available_from": "2026-08-01",
+  "room_type": "single",
+  "furnishing_status": "furnished",
+  "description": "Sunny single room near metro",
+  "photos": []
+}
+
+@listingId = {{createListing.response.body.listing.id}}
+
+### Owner lists their own listings
+GET {{baseUrl}}/listings/mine
+Authorization: Bearer {{ownerToken}}
+
+### Owner edits a listing
+PUT {{baseUrl}}/listings/{{listingId}}
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{
+  "rent": 11000
+}
+
+# ============================================================
+# LISTINGS (tenant browse — returns AI compatibility scores)
+# ============================================================
+### Browse with filters (scores compute on first view)
+GET {{baseUrl}}/listings?location=Koramangala&budget_max=15000&room_type=single
+Authorization: Bearer {{tenantToken}}
+
+### Get a single listing (score included for tenant)
+GET {{baseUrl}}/listings/{{listingId}}
+Authorization: Bearer {{tenantToken}}
+
+# ============================================================
+# INTEREST FLOW
+# ============================================================
+### Tenant sends interest
+# @name sendInterest
+POST {{baseUrl}}/interests
+Authorization: Bearer {{tenantToken}}
+Content-Type: application/json
+
+{
+  "listing_id": "{{listingId}}"
+}
+
+@interestId = {{sendInterest.response.body.interest.id}}
+
+### Tenant views their interests
+GET {{baseUrl}}/interests/mine
+Authorization: Bearer {{tenantToken}}
+
+### Owner views interested tenants (ranked by score)
+GET {{baseUrl}}/listings/{{listingId}}/interests
+Authorization: Bearer {{ownerToken}}
+
+### Owner accepts the interest (unlocks chat)
+PATCH {{baseUrl}}/interests/{{interestId}}
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{
+  "status": "accepted"
+}
+
+# ============================================================
+# CHAT (REST history — live messaging is via Socket.IO)
+# ============================================================
+### Chat history for the accepted interest
+GET {{baseUrl}}/chat/{{interestId}}/messages
+Authorization: Bearer {{tenantToken}}
+
+### List my chat rooms
+GET {{baseUrl}}/chat/rooms
+Authorization: Bearer {{tenantToken}}
+
+# ============================================================
+# PHOTO UPLOAD (owner) — needs a real image file next to this .http file
+# ============================================================
+### Upload listing photos (multipart)
+POST {{baseUrl}}/uploads
+Authorization: Bearer {{ownerToken}}
+Content-Type: multipart/form-data; boundary=----Boundary
+
+------Boundary
+Content-Disposition: form-data; name="photos"; filename="room.png"
+Content-Type: image/png
+
+< ./sample.png
+------Boundary--
+
+# ============================================================
+# ADMIN
+# ============================================================
+### Platform stats
+GET {{baseUrl}}/admin/stats
+Authorization: Bearer {{adminToken}}
+
+### List users
+GET {{baseUrl}}/admin/users
+Authorization: Bearer {{adminToken}}
+
+### List all listings
+GET {{baseUrl}}/admin/listings
+Authorization: Bearer {{adminToken}}
+
+### List all interest requests (optional ?status=pending|accepted|declined)
+GET {{baseUrl}}/admin/interests
+Authorization: Bearer {{adminToken}}
+
+### Mark a listing filled (owner)
+PATCH {{baseUrl}}/listings/{{listingId}}/fill
+Authorization: Bearer {{ownerToken}}
