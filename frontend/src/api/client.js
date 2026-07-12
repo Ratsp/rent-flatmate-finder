@@ -2,6 +2,8 @@
 // REST calls are proxied to the backend via Vite (see vite.config.js).
 
 const TOKEN_KEY = 'rff_token';
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export const getToken = () => localStorage.getItem(TOKEN_KEY);
 export const setToken = (t) => localStorage.setItem(TOKEN_KEY, t);
@@ -23,7 +25,11 @@ async function request(method, path, body, isForm = false) {
     payload = JSON.stringify(body);
   }
 
-  const res = await fetch(`/api${path}`, { method, headers, body: payload });
+  const res = await fetch(`${API_BASE_URL}/api${path}`, {
+    method,
+    headers,
+    body: payload,
+  });
 
   let data = null;
   const text = await res.text();
