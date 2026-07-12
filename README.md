@@ -55,15 +55,10 @@ The backend is built on **raw SQL (no ORM)** for full query control; the fronten
 
 ## 🎬 Demo Video
 
-> 📹 **[Watch the demo »](#)** &nbsp;·&nbsp; _(add your video link here)_
+Watch the complete walkthrough of the **Rent & Flatmate Finder** application, showcasing all major features for **Tenant**, **Owner**, and **Admin**.
 
-<div align="center">
-
-| Tenant browsing with AI scores | Owner managing interests | Real-time chat |
-|:---:|:---:|:---:|
-| _screenshot_ | _screenshot_ | _screenshot_ |
-
-</div>
+🔗 **Demo Video:**  
+📹 **[Watch Demo Video](https://drive.google.com/file/d/1Fdftey1kujwDFrCLuAbIOOWczZ77xXWg/view?usp=sharing)**
 
 ---
 
