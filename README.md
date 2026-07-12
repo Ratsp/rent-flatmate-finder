@@ -66,19 +66,12 @@ The backend is built on **raw SQL (no ORM)** for full query control; the fronten
 
 ## 📦 Deliverables
 
-<<<<<<< HEAD
-Watch the complete walkthrough of the **Rent & Flatmate Finder** application, showcasing all major features for **Tenant**, **Owner**, and **Admin**.
-
-🔗 **Demo Video:**  
-📹 **[Watch Demo Video](https://drive.google.com/file/d/1Fdftey1kujwDFrCLuAbIOOWczZ77xXWg/view?usp=sharing)**
-=======
 | # | Deliverable | Where |
 |---|-------------|-------|
 | 1 | Complete source code | this repository (`backend/` + `frontend/`) |
 | 2 | README — setup, `.env.example`, API docs, DB schema, **LLM prompt + example I/O** | this file + [`backend/.env.example`](backend/.env.example) |
 | 3 | Hosted application URL | _(deploy to Vercel/Render — see [Quick Start](#-quick-start-guide))_ |
 | 4 | System design write-up (≤800 words) | **[`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md)** |
->>>>>>> 632f83e (Add SYSTEM_DESIGN.md and improvement in README.md file.)
 
 ---
 
