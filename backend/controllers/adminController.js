@@ -249,15 +249,26 @@ const getAllInterests = async (req, res) => {
  */
 const getStats = async (req, res) => {
   try {
-    const [users, listings, interests, matches, avgScore, recentUsers, recentListings] = await Promise.all([
+    const [users, listings, interests, matches, avgScore, funnel, recentUsers, recentListings] = await Promise.all([
       query('SELECT COUNT(*) AS total, role FROM users GROUP BY role'),
       query("SELECT COUNT(*) AS total, status FROM listings GROUP BY status"),
       query('SELECT COUNT(*) AS total FROM interest_requests'),
       query("SELECT COUNT(*) AS total FROM interest_requests WHERE status = 'accepted'"),
       query('SELECT ROUND(AVG(score), 1) AS avg_score FROM compatibility_scores'),
+      // Funnel metrics: conversion (interest→match), ghost rate (never answered), time-to-match
+      query(`SELECT
+               COUNT(*)                                                 AS total,
+               COUNT(*) FILTER (WHERE status = 'accepted')              AS accepted,
+               COUNT(*) FILTER (WHERE status = 'pending')               AS pending,
+               ROUND(AVG(EXTRACT(EPOCH FROM (responded_at - created_at)) / 3600.0)
+                     FILTER (WHERE status = 'accepted' AND responded_at IS NOT NULL), 1) AS avg_match_hours
+             FROM interest_requests`),
       query('SELECT id, name, email, role, created_at FROM users ORDER BY created_at DESC LIMIT 5'),
       query('SELECT id, location, rent, room_type, status, created_at FROM listings ORDER BY created_at DESC LIMIT 5')
     ]);
+
+    const f = funnel.rows[0];
+    const fTotal = parseInt(f.total);
 
     // Transform role counts
     const userCounts = {};
@@ -278,7 +289,13 @@ const getStats = async (req, res) => {
         },
         interest_requests: parseInt(interests.rows[0].total),
         accepted_matches: parseInt(matches.rows[0].total),
-        avg_compatibility_score: parseFloat(avgScore.rows[0].avg_score) || 0
+        avg_compatibility_score: parseFloat(avgScore.rows[0].avg_score) || 0,
+        funnel: {
+          // % of interests that become a match, % never answered by owners, avg hrs to accept
+          conversion_rate: fTotal ? Math.round((100 * parseInt(f.accepted)) / fTotal) : 0,
+          ghost_rate: fTotal ? Math.round((100 * parseInt(f.pending)) / fTotal) : 0,
+          avg_time_to_match_hours: f.avg_match_hours !== null ? parseFloat(f.avg_match_hours) : null
+        }
       },
       recent: {
         users: recentUsers.rows,

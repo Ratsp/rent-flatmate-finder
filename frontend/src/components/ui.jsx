@@ -57,6 +57,47 @@ export function ScoreBadge({ score }) {
   );
 }
 
+// Format avg response hours into a short human label.
+const speedLabel = (h) => {
+  if (h == null) return null;
+  const n = Number(h);
+  if (n < 1) return '<1h';
+  if (n < 24) return `~${Math.round(n)}h`;
+  return `~${Math.round(n / 24)}d`;
+};
+
+// Owner trust/responsiveness signal, derived from real interest-response behaviour.
+// Tiers: Trusted (≥90% & replies ≤6h) · Responsive (≥70%) · new owners get a neutral chip.
+export function TrustBadge({ rate, hours, count }) {
+  const n = Number(count) || 0;
+  if (n === 0) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">
+        🆕 New owner
+      </span>
+    );
+  }
+  const r = Number(rate);
+  const h = hours == null ? null : Number(hours);
+  const trusted = r >= 90 && h != null && h <= 6;
+  const responsive = r >= 70;
+  const tone = trusted
+    ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/20'
+    : responsive
+    ? 'bg-sky-50 text-sky-700 ring-sky-600/20'
+    : 'bg-slate-100 text-slate-600 ring-slate-500/20';
+  const label = trusted ? '🏅 Trusted owner' : responsive ? '✓ Responsive' : 'Owner';
+  const speed = speedLabel(h);
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset ${tone}`}
+      title={`${r}% response rate${speed ? ` · replies in ${speed}` : ''} · ${n} enquiries`}
+    >
+      {label}{speed ? ` · ${speed}` : ''}
+    </span>
+  );
+}
+
 export function Field({ label, error, children }) {
   return (
     <div>

@@ -222,6 +222,10 @@ const getListings = async (req, res) => {
     // Build main query values starting with filter values
     const mainValues = [...filterValues];
 
+    // Owner trust/responsiveness signal (data-driven, always included)
+    const trustSelect = ', ot.response_rate, ot.avg_response_hours, ot.total_interests AS owner_total_interests, ot.accepted_interests AS owner_accepted_interests';
+    const trustJoin = 'LEFT JOIN owner_trust ot ON ot.owner_id = l.owner_id';
+
     // If tenant is authenticated, join with compatibility_scores
     let scoreJoin = '';
     let scoreSelect = '';
@@ -242,17 +246,19 @@ const getListings = async (req, res) => {
     mainValues.push(offset);
     const offsetIndex = paramIndex;
 
-    // Get listings with owner name
-    const result = await query(
-      `SELECT l.*, u.name AS owner_name ${scoreSelect}
+    // Single query template (reused if scores are computed on the fly)
+    const listingsSql =
+      `SELECT l.*, u.name AS owner_name${trustSelect} ${scoreSelect}
        FROM listings l
        JOIN users u ON u.id = l.owner_id
+       ${trustJoin}
        ${scoreJoin}
        ${whereClause}
        ${orderBy}
-       LIMIT $${limitIndex} OFFSET $${offsetIndex}`,
-      mainValues
-    );
+       LIMIT $${limitIndex} OFFSET $${offsetIndex}`;
+
+    // Get listings with owner name
+    const result = await query(listingsSql, mainValues);
 
     // If tenant: batch compute scores for listings that don't have them yet
     let listings = result.rows;
@@ -262,20 +268,9 @@ const getListings = async (req, res) => {
         .map(l => l.id);
 
       if (unscoredIds.length > 0) {
-        // Compute missing scores
         await batchComputeScores(req.user.id, unscoredIds);
-
         // Re-query to get the freshly computed scores
-        const refreshed = await query(
-          `SELECT l.*, u.name AS owner_name ${scoreSelect}
-           FROM listings l
-           JOIN users u ON u.id = l.owner_id
-           ${scoreJoin}
-           ${whereClause}
-           ${orderBy}
-           LIMIT $${limitIndex} OFFSET $${offsetIndex}`,
-          mainValues
-        );
+        const refreshed = await query(listingsSql, mainValues);
         listings = refreshed.rows;
       }
     }
@@ -313,8 +308,11 @@ const getOwnerListings = async (req, res) => {
     const result = await query(
       `SELECT l.*,
               (SELECT COUNT(*) FROM interest_requests ir WHERE ir.listing_id = l.id) AS interest_count,
-              (SELECT COUNT(*) FROM interest_requests ir WHERE ir.listing_id = l.id AND ir.status = 'accepted') AS accepted_count
+              (SELECT COUNT(*) FROM interest_requests ir WHERE ir.listing_id = l.id AND ir.status = 'accepted') AS accepted_count,
+              ot.response_rate, ot.avg_response_hours,
+              ot.total_interests AS owner_total_interests, ot.accepted_interests AS owner_accepted_interests
        FROM listings l
+       LEFT JOIN owner_trust ot ON ot.owner_id = l.owner_id
        WHERE l.owner_id = $1
        ORDER BY l.created_at DESC`,
       [req.user.id]
@@ -348,9 +346,13 @@ const getListingById = async (req, res) => {
     }
 
     const result = await query(
-      `SELECT l.*, u.name AS owner_name, u.email AS owner_email ${scoreSelect}
+      `SELECT l.*, u.name AS owner_name, u.email AS owner_email,
+              ot.response_rate, ot.avg_response_hours,
+              ot.total_interests AS owner_total_interests, ot.accepted_interests AS owner_accepted_interests
+              ${scoreSelect}
        FROM listings l
        JOIN users u ON u.id = l.owner_id
+       LEFT JOIN owner_trust ot ON ot.owner_id = l.owner_id
        ${scoreJoin}
        WHERE l.id = $1`,
       values

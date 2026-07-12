@@ -1,4 +1,4 @@
-import { ScoreBadge, Badge } from './ui';
+import { ScoreBadge, Badge, TrustBadge } from './ui';
 
 const money = (n) => `₹${Number(n).toLocaleString('en-IN')}`;
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
@@ -35,7 +35,10 @@ export default function ListingCard({ listing, showScore = false, showStatus = f
         )}
 
         {listing.owner_name && (
-          <p className="mt-2 text-xs text-slate-400">Listed by {listing.owner_name}</p>
+          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <p className="text-xs text-slate-400">Listed by {listing.owner_name}</p>
+            <TrustBadge rate={listing.response_rate} hours={listing.avg_response_hours} count={listing.owner_total_interests} />
+          </div>
         )}
 
         {showScore && (
@@ -45,7 +48,10 @@ export default function ListingCard({ listing, showScore = false, showStatus = f
               <ScoreBadge score={listing.compatibility_score} />
             </div>
             {listing.score_explanation && (
-              <p className="mt-1 text-xs text-slate-500">{listing.score_explanation}</p>
+              <p className="mt-1.5 text-xs text-slate-500">
+                <span className="font-medium text-slate-600">Why you match: </span>
+                {listing.score_explanation}
+              </p>
             )}
           </div>
         )}

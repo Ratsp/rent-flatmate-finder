@@ -2,7 +2,7 @@
 
 # 🏠 Rent & Flatmate Finder
 
-### AI-powered room-listing & flatmate-matching platform — find your perfect room, ranked by an LLM compatibility engine.
+### AI-powered room-listing & flatmate-matching platform — find your perfect room, ranked by an LLM compatibility engine and a data-driven trust layer.
 
 ![Node](https://img.shields.io/badge/Node.js-18+-339933?logo=node.js&logoColor=white)
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
@@ -11,19 +11,45 @@
 ![Socket.IO](https://img.shields.io/badge/Realtime-Socket.IO-010101?logo=socket.io&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-blue)
 
-**Owner:** Ratnali Anil Pawar
+**Author:** Ratnali Anil Pawar
 
 </div>
 
 ---
 
+## 📑 Table of Contents
+
+- [Summary](#-summary)
+- [Demo Video](#-demo-video)
+- [Key Highlights](#-key-highlights)
+- [Problem Statement](#-problem-statement)
+- [Architecture & Data Flow](#️-architecture--data-flow)
+- [Data Model](#-data-model)
+- [AI Compatibility Scoring](#-ai-compatibility-scoring)
+- [Trust & Analytics Engine](#-trust--analytics-engine)
+- [End-to-End Workflow](#-end-to-end-workflow)
+- [Key Features & Enhancements](#-key-features--enhancements)
+- [Technology Stack](#️-technology-stack)
+- [Configuration](#️-configuration)
+- [Quick Start Guide](#-quick-start-guide)
+- [Test Credentials](#-test-credentials)
+- [API Reference](#-api-reference)
+- [Project Structure](#-project-structure)
+- [User Roles](#-user-roles)
+- [Troubleshooting](#-troubleshooting)
+- [Roadmap](#-roadmap)
+
+---
+
 ## 📖 Summary
 
-**Rent & Flatmate Finder** connects people looking for rooms with people offering them — but it goes beyond a plain listings board. **Owners** post rooms, **tenants** create "looking for a room" profiles, and an **LLM-powered compatibility engine** (Groq · Llama 3.3 70B) scores and ranks how well each tenant matches each listing based on budget, location, room type, and move-in timing.
+**Rent & Flatmate Finder** connects people looking for rooms with people offering them — but it goes well beyond a plain listings board. **Owners** post rooms, **tenants** create "looking for a room" profiles, and an **LLM-powered compatibility engine** (Groq · Llama 3.3 70B) scores and ranks how well each tenant matches each listing based on budget, location, room type, and move-in timing.
 
-Tenants express interest → owners accept/decline → once accepted, both sides get **real-time chat**. Key events (high-compatibility interest, accept/decline) trigger **email notifications**. A full **admin dashboard** oversees the whole platform.
+Every match ships with a plain-English **"Why you match"** explanation, and every owner carries a **data-driven Trust Score** computed from how reliably and quickly they respond — so tenants spend less time guessing and more time talking to the right owners.
 
-The backend is built on **raw SQL (no ORM)** for full query control, and the frontend is a clean, responsive React SPA.
+Tenants express interest → owners accept/decline → once accepted, both sides get **real-time chat**. Key events trigger **email notifications**, and a full **admin dashboard** with a **conversion funnel** oversees the whole platform.
+
+The backend is built on **raw SQL (no ORM)** for full query control; the frontend is a clean, responsive React SPA.
 
 ---
 
@@ -44,7 +70,9 @@ The backend is built on **raw SQL (no ORM)** for full query control, and the fro
 ## ✨ Key Highlights
 
 - 🧠 **AI compatibility scoring** — every tenant↔listing pair scored 0–100 by an LLM, with a **deterministic rule-based fallback** so scoring *never* fails.
-- ⚡ **Smart caching** — scores computed once and cached; auto-invalidated when a profile or listing is edited.
+- 💡 **"Why you match"** — each score carries specific, human-readable reasons so tenants decide in seconds, not minutes.
+- 🏅 **Owner Trust Score** — a responsiveness reputation computed from *real behaviour* (response rate + reply speed), shown as a badge. Two-sided trust with zero manual reviews.
+- 📊 **Admin conversion funnel** — live **conversion rate**, **ghost rate**, and **time-to-match** metrics, straight from the data.
 - 💬 **Real-time chat** — Socket.IO messaging that unlocks only after an interest is accepted, with message persistence.
 - 📧 **Email notifications** — high-score interest alerts + accept/decline updates (fire-and-forget, logged).
 - 🔐 **Role-based access** — Tenant / Owner / Admin, enforced via JWT middleware on every route.
@@ -55,12 +83,13 @@ The backend is built on **raw SQL (no ORM)** for full query control, and the fro
 
 ## 🎯 Problem Statement
 
-Finding a room to rent isn't just about price — it depends on whether a tenant's **location and budget expectations actually align** with what an owner is offering. Traditional listing sites make renters manually scan dozens of irrelevant listings, and owners get flooded with mismatched enquiries.
+Finding a room to rent isn't just about price — it depends on whether a tenant's **location and budget expectations actually align** with what an owner is offering, and whether the owner will even **respond**. Traditional listing sites make renters manually scan dozens of irrelevant listings, chase owners who ghost them, and gamble on whether a stranger is trustworthy. Owners, meanwhile, get flooded with mismatched enquiries.
 
 This platform solves that by:
 1. Letting **owners** list rooms and **tenants** describe what they want.
-2. Using an **LLM to score compatibility**, so tenants see the *best-matching* rooms first and owners see the *best-matching* tenants first.
-3. Gating **direct chat** behind a mutual accept step, keeping conversations relevant.
+2. Using an **LLM to score & explain compatibility**, so tenants see the *best-matching* rooms first (with reasons) and owners see the *best-matching* tenants first.
+3. Surfacing a **data-driven trust signal** so tenants can prioritise owners who actually respond — and owners are rewarded for responding.
+4. Gating **direct chat** behind a mutual accept step, keeping conversations relevant.
 
 ---
 
@@ -88,17 +117,43 @@ This platform solves that by:
           ┌──────────────┐  ┌────────────┐   ┌────────────────────────────┐
           │  Groq LLM    │  │  Resend    │   │  Supabase PostgreSQL       │
           │  (Llama 3.3) │  │  (email)   │   │  raw SQL via pg (no ORM)   │
-          └──────────────┘  └────────────┘   └────────────────────────────┘
+          └──────────────┘  └────────────┘   │  7 tables + owner_trust    │
+                                             │  analytics view            │
+                                             └────────────────────────────┘
 ```
 
-**Database tables:** `users` · `tenant_profiles` · `listings` · `compatibility_scores` · `interest_requests` · `messages` · `notification_log`
+**Request path:** every protected route passes through JWT verification and a `requireRole` guard before hitting a controller. Controllers use a thin `query()` helper over a `pg` connection pool — **no ORM**, all parameterized.
 
-**Compatibility scoring flow:**
+---
+
+## 🗄️ Data Model
+
+**7 tables + 1 analytics view**, all defined in [`backend/db/schema.sql`](backend/db/schema.sql).
+
+| Table | Purpose |
+|-------|---------|
+| `users` | Accounts with `role` (`tenant`/`owner`/`admin`), bcrypt password hash, `is_active` flag |
+| `tenant_profiles` | A tenant's preferences: location, budget range, room type, move-in date |
+| `listings` | Owner room posts: location, rent, dates, photos[], furnishing, `status` |
+| `compatibility_scores` | Cached AI scores per `(tenant, listing)` + explanation + `source` (`llm`/`fallback`) |
+| `interest_requests` | Tenant→listing interest with `status` and `responded_at` (powers trust + funnel) |
+| `messages` | Chat messages, keyed to an accepted interest thread |
+| `notification_log` | Audit trail of every email sent (`sent`/`failed`) |
+| `owner_trust` *(view)* | **Live aggregate** of owner responsiveness — response rate & avg reply time |
+
+> The `owner_trust` view recomputes on every read from `interest_requests` — no extra columns, no cron, no write amplification.
+
+---
+
+## 🧠 AI Compatibility Scoring
+
+Each tenant–listing pair is scored **0–100** by **Groq's Llama 3.3 70B**, and cached.
+
 ```
 Tenant browses / sends interest
         │
         ▼
-Score cached for (tenant, listing)?  ──yes──►  return cached score
+Score cached for (tenant, listing)?  ──yes──►  return cached score + reasons
         │ no
         ▼
 Call Groq LLM (5s timeout, JSON mode)
@@ -106,8 +161,52 @@ Call Groq LLM (5s timeout, JSON mode)
    success? ──no──►  Rule-based fallback (budget + location + room type)
         │ yes
         ▼
-Store in compatibility_scores (source = 'llm' | 'fallback')  ──►  return score
+Store in compatibility_scores (score, explanation, source)  ──►  return
 ```
+
+- **Primary factors:** budget overlap + location match
+- **Secondary factors:** room-type preference + move-in date proximity
+- **💡 "Why you match":** every score returns a short, specific explanation, e.g.
+  > *"Rent ₹12,000 fits your ₹8,000–₹15,000 budget · Located in your preferred area · Matches your preferred single room"*
+- **Caching:** computed once per pair, stored in `compatibility_scores`, **auto-invalidated** when a profile or listing is edited.
+- **Fallback:** if the LLM times out (5s) or returns malformed JSON, a deterministic rule-based score + reasons is used — the platform never breaks. Each score is tagged `source = 'llm' | 'fallback'`.
+
+---
+
+## 🏅 Trust & Analytics Engine
+
+Two data-native features turn raw behaviour into trust and insight — no manual reviews, no new tables.
+
+### Owner Trust Score (tenant-facing)
+
+Computed live by the `owner_trust` view from real interest-response behaviour:
+
+| Metric | Formula |
+|--------|---------|
+| **Response rate** | `responded_interests / total_interests` |
+| **Avg reply time** | `avg(responded_at − created_at)` over answered interests |
+
+Rendered as a badge on every listing (and on the owner's own dashboard):
+
+| Badge | Condition |
+|-------|-----------|
+| 🏅 **Trusted owner** | response rate ≥ 90% **and** replies ≤ 6h |
+| ✓ **Responsive** | response rate ≥ 70% |
+| 🆕 **New owner** | no enquiries yet |
+
+This gives tenants an objective signal of who actually replies, and gives owners a reputation they earn by responding — a positive flywheel that lifts platform-wide responsiveness.
+
+### Admin Conversion Funnel
+
+The admin dashboard surfaces three funnel metrics, computed live from `interest_requests`:
+
+| Metric | Formula | Reads |
+|--------|---------|-------|
+| **Conversion rate** | `accepted / total interests` | how many enquiries become matches |
+| **Ghost rate** | `pending / total interests` | how many enquiries owners never answered |
+| **Time to match** | `avg(responded_at − created_at)` over accepted | how fast matches happen |
+
+Together they are the measurement layer that proves the trust & matching features move the numbers.
 
 ---
 
@@ -118,24 +217,25 @@ Store in compatibility_scores (source = 'llm' | 'fallback')  ──►  return s
    │                             │                               │
    │ 1. Register / Login         │ 1. Register / Login           │ Login (seeded)
    │ 2. Create listing + photos  │ 2. Create preference profile  │
-   │                             │ 3. Browse (AI-ranked) ◄────── LLM scores
+   │                             │ 3. Browse (AI-ranked +        │
+   │                             │    "why you match" + trust) ◄─ LLM + owner_trust
    │                             │ 4. Send interest ───────────► │
    │ 5. Get email (if score>80)  │                               │
    │ 6. View interested tenants  │                               │ Monitor users,
-   │    (ranked by score)        │                               │ listings,
-   │ 7. Accept / Decline ──────► │ 8. Get accept/decline email   │ interests,
-   │                             │                               │ platform stats
+   │    (ranked by score)        │                               │ listings, interests,
+   │ 7. Accept / Decline ──────► │ 8. Get accept/decline email   │ funnel analytics
+   │    (updates Trust Score)    │                               │
    │ 9. 💬 Chat unlocked ◄──────► │ 9. 💬 Chat unlocked           │
    │    (real-time Socket.IO)    │                               │
 ```
 
 1. **Owner** posts a room (location, rent, dates, photos).
 2. **Tenant** sets budget/location preferences.
-3. Tenant **browses** — listings arrive ranked by AI compatibility score.
+3. Tenant **browses** — listings arrive ranked by AI score, each with match reasons and the owner's trust badge.
 4. Tenant **sends interest**; if score > 80, the owner gets an instant email.
-5. Owner reviews **interested tenants ranked by score**, then **accepts or declines** (tenant emailed either way).
+5. Owner reviews **interested tenants ranked by score**, then **accepts or declines** (tenant emailed either way). Each response feeds their Trust Score.
 6. On accept, a **real-time chat room** opens for that tenant–listing pair.
-7. **Admin** oversees all users, listings, interests, and platform stats.
+7. **Admin** oversees all users, listings, interests, and the conversion funnel.
 
 ---
 
@@ -154,10 +254,13 @@ Store in compatibility_scores (source = 'llm' | 'fallback')  ──►  return s
 | **Admin** | Users, listings, interests, and dashboard stats |
 
 ### Enhancements added
+- 🏅 **Owner Trust Score** — data-driven responsiveness badge from the `owner_trust` view. Tenants see **Trusted owner / Responsive / New owner**; owners see their own reputation. *(See [Trust & Analytics Engine](#-trust--analytics-engine).)*
+- 💡 **"Why you match"** — specific, human-readable reasons on every score, on both the LLM and rule-based paths.
+- 📊 **Admin conversion funnel** — live **conversion rate**, **ghost rate**, and **avg time-to-match**.
 - ♻️ **Score cache invalidation** — editing a profile or listing clears stale scores so they recompute automatically.
 - 📤 **Photo upload API** (`POST /api/uploads`) — multipart image upload returning URLs.
 - 🗂️ **Admin interests view** (`GET /api/admin/interests`) — full oversight of all interest requests.
-- 📊 **Owner listing insights** — per-listing interest + accepted counts.
+- 📈 **Owner listing insights** — per-listing interest + accepted counts.
 - 🔔 **Toast notifications** & optimistic UI states in the frontend.
 - 🧪 **`requests.http`** — a ready-to-run API test suite for VS Code REST Client.
 
@@ -241,10 +344,11 @@ cp .env.example .env
 ### Step 3 — Set up the database
 ```bash
 cd backend
-node db/runSchema.js      # creates all 7 tables (⚠️ drops existing ones)
+node db/runSchema.js      # creates all 7 tables + owner_trust view (⚠️ drops existing)
 node db/createAdmin.js    # seeds admin@test.com / admin123
 ```
-> Or paste `backend/db/schema.sql` into the Supabase Dashboard → SQL Editor → Run.
+> Or paste [`backend/db/schema.sql`](backend/db/schema.sql) into the Supabase Dashboard → SQL Editor → Run.
+> Already have a DB from before this feature? Just run [`backend/db/owner_trust.sql`](backend/db/owner_trust.sql) to add the view.
 
 ### Step 4 — Run (two terminals)
 ```bash
@@ -258,6 +362,8 @@ npm run dev        # ➜ http://localhost:5173
 ```
 
 Open **http://localhost:5173**. The frontend proxies `/api` to the backend (see `frontend/vite.config.js`), so **no CORS setup is needed** in development.
+
+> ⚠️ Run **only one** backend on port `5000`. A second one (e.g. a stray `node server.js`) will make `npm run dev` crash with `EADDRINUSE` — see [Troubleshooting](#-troubleshooting).
 
 ---
 
@@ -285,8 +391,8 @@ Open **http://localhost:5173**. The frontend proxies `/api` to the backend (see 
 | `PUT` | `/api/tenants/me` | Tenant | Create/update profile |
 | `POST` | `/api/uploads` | Owner | Upload listing photos → URLs |
 | `POST` | `/api/listings` | Owner | Create listing |
-| `GET` | `/api/listings` | Tenant | Browse + filter + AI scores |
-| `GET` | `/api/listings/mine` | Owner | Own listings (+ interest counts) |
+| `GET` | `/api/listings` | Tenant | Browse + filter + AI scores + owner trust |
+| `GET` | `/api/listings/mine` | Owner | Own listings (+ interest counts + trust) |
 | `GET` | `/api/listings/:id` | Auth | Single listing |
 | `PUT` | `/api/listings/:id` | Owner | Edit listing |
 | `DELETE` | `/api/listings/:id` | Owner | Delete listing |
@@ -302,11 +408,11 @@ Open **http://localhost:5173**. The frontend proxies `/api` to the backend (see 
 | `GET` | `/api/admin/listings` | Admin | List all listings |
 | `DELETE` | `/api/admin/listings/:id` | Admin | Force-delete listing |
 | `GET` | `/api/admin/interests` | Admin | View all interest requests |
-| `GET` | `/api/admin/stats` | Admin | Platform dashboard stats |
+| `GET` | `/api/admin/stats` | Admin | Platform stats **+ conversion funnel** |
 
 **Socket.IO events:** `join_room` · `send_message` · `receive_message` · `typing` · `mark_read`
 
-> 🧪 Import `backend/requests.http` into VS Code (REST Client extension) to run every endpoint with one click — tokens auto-chain between requests.
+> 🧪 Import [`backend/requests.http`](backend/requests.http) into VS Code (REST Client extension) to run every endpoint with one click — tokens auto-chain between requests.
 
 ---
 
@@ -323,26 +429,15 @@ rent-flatmate-finder/
 │   ├── controllers/              # auth · listing · tenant · interest · chat · admin · upload
 │   ├── routes/                   # one router per resource
 │   ├── services/                 # scoring (LLM+fallback) · email · chatSocket · upload
-│   └── db/                       # schema.sql · runSchema.js · createAdmin.js
+│   └── db/                       # schema.sql · owner_trust.sql · runSchema.js · createAdmin.js
 └── frontend/
     ├── vite.config.js            # dev server + /api proxy
     └── src/
         ├── api/                  # client.js (REST) · socket.js (Socket.IO)
         ├── context/              # AuthContext · ToastContext
-        ├── components/           # Navbar · Layout · ListingCard · Modal · ui
+        ├── components/           # Navbar · Layout · ListingCard · Modal · ui (incl. TrustBadge)
         └── pages/                # Login · Register · Chat · tenant/ · owner/ · admin/
 ```
-
----
-
-## 🧠 AI Compatibility Scoring
-
-The platform scores each tenant–listing pair **0–100** using **Groq's Llama 3.3 70B**:
-
-- **Primary factors:** budget overlap + location match
-- **Secondary factors:** room-type preference + move-in date proximity
-- **Caching:** computed once per pair, stored in `compatibility_scores`, auto-invalidated on profile/listing edits
-- **Fallback:** if the LLM times out (5s) or returns malformed JSON, a deterministic rule-based score is used — the platform never breaks. Each score is tagged `source = 'llm' | 'fallback'`.
 
 ---
 
@@ -350,9 +445,35 @@ The platform scores each tenant–listing pair **0–100** using **Groq's Llama 
 
 | Role | Capabilities |
 |------|--------------|
-| **Tenant** | Create profile · browse listings · view AI scores · send interest · chat |
-| **Owner** | Post/edit/delete listings · upload photos · view ranked interested tenants · accept/decline · chat |
-| **Admin** | Manage all users & listings · view all interests · platform stats · deactivate accounts |
+| **Tenant** | Create profile · browse listings · view AI scores + "why you match" + owner trust · send interest · chat |
+| **Owner** | Post/edit/delete listings · upload photos · view ranked interested tenants · accept/decline · see own Trust Score · chat |
+| **Admin** | Manage all users & listings · view all interests · platform stats + conversion funnel · deactivate accounts |
+
+---
+
+## 🩺 Troubleshooting
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| `npm run dev` crashes: **`EADDRINUSE :::5000`** | Another process already holds port 5000 | Stop the other backend, or change `PORT` in `.env`. Only run one backend. |
+| Login: **"Account has been deactivated. Contact admin."** | The user's `is_active` was set to `false` (e.g. Deactivated in Admin → Users) | Re-activate from **Admin → Users** (button toggles to **Activate**), or `UPDATE users SET is_active = TRUE WHERE email = '…'`. |
+| Register says **"already registered"**, then login fails **401** | Email exists with a different password | Log in with the original password, or reset it, or register a new email. |
+| Browse shows **"Not scored"** | Tenant has no profile yet | Create the tenant profile first — scores compute on the first browse after that. |
+| Owner badge shows **"New owner"** | No interest requests received yet | Trust builds once the owner receives and answers enquiries. |
+| Emails don't send | `RESEND_API_KEY` not set | Expected in dev — emails are logged to the backend console instead. |
+
+---
+
+## 🗺️ Roadmap
+
+Data-informed features to deepen trust and reduce tenant time-to-match:
+
+- 🔔 **Saved searches + instant match alerts** — notify a tenant when a new listing scores > 80 for them (retention hook).
+- 🔁 **Reverse matching** — let owners browse a ranked feed of fitting tenants and invite them proactively.
+- 🤝 **Mutual-interest fast-track** — if both sides show interest, skip approval and open chat instantly.
+- ✅ **Verification tiers** — email → phone OTP → ID/KYC badges layered on top of the behavioural Trust Score.
+- ⭐ **Post-deal reviews** — two-way ratings feeding the trust signal.
+- 📉 **Cohort & funnel drilldowns** — time-to-first-interest, 7-day retention, drop-off by stage.
 
 ---
 

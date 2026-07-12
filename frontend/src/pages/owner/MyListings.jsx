@@ -3,7 +3,7 @@ import { api } from '../../api/client';
 import { useToast } from '../../context/ToastContext';
 import ListingCard from '../../components/ListingCard';
 import Modal from '../../components/Modal';
-import { PageLoader, EmptyState } from '../../components/ui';
+import { PageLoader, EmptyState, TrustBadge } from '../../components/ui';
 import ListingForm from './ListingForm';
 import InterestsPanel from './InterestsPanel';
 
@@ -43,6 +43,12 @@ export default function MyListings() {
         <div>
           <h1 className="text-xl font-bold text-slate-900">My listings</h1>
           <p className="text-sm text-slate-500">Post rooms and manage interested tenants.</p>
+          {!loading && Number(listings[0]?.owner_total_interests) > 0 && (
+            <div className="mt-1.5 flex items-center gap-2">
+              <span className="text-xs text-slate-400">Your reputation:</span>
+              <TrustBadge rate={listings[0].response_rate} hours={listings[0].avg_response_hours} count={listings[0].owner_total_interests} />
+            </div>
+          )}
         </div>
         <button className="btn-primary" onClick={() => setEditing(null)}>＋ New listing</button>
       </div>

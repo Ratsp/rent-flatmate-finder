@@ -50,6 +50,9 @@ function Overview() {
 
   if (!data) return <PageLoader />;
   const { stats, recent } = data;
+  const f = stats.funnel || {};
+  const ttm = f.avg_time_to_match_hours;
+  const ttmLabel = ttm == null ? '—' : ttm < 1 ? '<1h' : ttm < 24 ? `${Math.round(ttm)}h` : `${(ttm / 24).toFixed(1)}d`;
 
   return (
     <div className="space-y-6">
@@ -61,6 +64,15 @@ function Overview() {
         <StatCard label="Interests" value={stats.interest_requests} />
         <StatCard label="Matches" value={stats.accepted_matches} hint="accepted" />
         <StatCard label="Avg score" value={`${stats.avg_compatibility_score}`} hint="/ 100" />
+      </div>
+
+      <div>
+        <h3 className="mb-2 text-sm font-semibold text-slate-700">Conversion funnel</h3>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <StatCard label="Conversion rate" value={`${f.conversion_rate ?? 0}%`} hint="interests → accepted match" />
+          <StatCard label="Ghost rate" value={`${f.ghost_rate ?? 0}%`} hint="interests never answered" />
+          <StatCard label="Time to match" value={ttmLabel} hint="avg time to acceptance" />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

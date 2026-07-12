@@ -117,9 +117,24 @@ const fallbackScore = (tenantProfile, listing) => {
   }
 
   const score = Math.min(100, Math.round(base_score));
+
+  // Build specific, human-readable match reasons (drives the "Why you match" UI).
+  const inr = (n) => `₹${Number(n).toLocaleString('en-IN')}`;
+  const reasons = [];
+  if (rent >= budgetMin && rent <= budgetMax) reasons.push(`Rent ${inr(rent)} fits your ${inr(budgetMin)}–${inr(budgetMax)} budget`);
+  else if (rent <= budgetMax * 1.1) reasons.push(`Rent ${inr(rent)} is just above your budget`);
+  else reasons.push(`Rent ${inr(rent)} is over your budget`);
+
+  if (tenantLoc && listingLoc && (tenantLoc.includes(listingLoc) || listingLoc.includes(tenantLoc)))
+    reasons.push('Located in your preferred area');
+  else reasons.push('Different area from your preference');
+
+  if (tenantProfile.room_type_pref && tenantProfile.room_type_pref === listing.room_type)
+    reasons.push(`Matches your preferred ${listing.room_type} room`);
+
   return {
     score,
-    explanation: 'Score computed using rule-based fallback (budget + location match).',
+    explanation: reasons.join(' · '),
     source: 'fallback'
   };
 };
