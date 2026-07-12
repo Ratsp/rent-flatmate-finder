@@ -17,10 +17,21 @@
 
 ---
 
+
+## 🎬 Demo Video
+
+Watch the complete walkthrough of the **Rent & Flatmate Finder** application, showcasing all major features for **Tenant**, **Owner**, and **Admin**.
+
+🔗 **Demo Video:**  
+📹 **[Watch Demo Video](https://drive.google.com/file/d/1Fdftey1kujwDFrCLuAbIOOWczZ77xXWg/view?usp=sharing)**
+
+---
+
+
 ## 📑 Table of Contents
 
 - [Summary](#-summary)
-- [Demo Video](#-demo-video)
+- [Deliverables](#-deliverables)
 - [Key Highlights](#-key-highlights)
 - [Problem Statement](#-problem-statement)
 - [Architecture & Data Flow](#️-architecture--data-flow)
@@ -53,12 +64,21 @@ The backend is built on **raw SQL (no ORM)** for full query control; the fronten
 
 ---
 
-## 🎬 Demo Video
+## 📦 Deliverables
 
+<<<<<<< HEAD
 Watch the complete walkthrough of the **Rent & Flatmate Finder** application, showcasing all major features for **Tenant**, **Owner**, and **Admin**.
 
 🔗 **Demo Video:**  
 📹 **[Watch Demo Video](https://drive.google.com/file/d/1Fdftey1kujwDFrCLuAbIOOWczZ77xXWg/view?usp=sharing)**
+=======
+| # | Deliverable | Where |
+|---|-------------|-------|
+| 1 | Complete source code | this repository (`backend/` + `frontend/`) |
+| 2 | README — setup, `.env.example`, API docs, DB schema, **LLM prompt + example I/O** | this file + [`backend/.env.example`](backend/.env.example) |
+| 3 | Hosted application URL | _(deploy to Vercel/Render — see [Quick Start](#-quick-start-guide))_ |
+| 4 | System design write-up (≤800 words) | **[`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md)** |
+>>>>>>> 632f83e (Add SYSTEM_DESIGN.md and improvement in README.md file.)
 
 ---
 
@@ -165,6 +185,56 @@ Store in compatibility_scores (score, explanation, source)  ──►  return
   > *"Rent ₹12,000 fits your ₹8,000–₹15,000 budget · Located in your preferred area · Matches your preferred single room"*
 - **Caching:** computed once per pair, stored in `compatibility_scores`, **auto-invalidated** when a profile or listing is edited.
 - **Fallback:** if the LLM times out (5s) or returns malformed JSON, a deterministic rule-based score + reasons is used — the platform never breaks. Each score is tagged `source = 'llm' | 'fallback'`.
+
+### LLM Prompt & Example I/O
+
+**System prompt**
+```
+You are a compatibility scoring engine for a room rental platform.
+You must respond with ONLY valid JSON, no markdown, no extra text.
+Schema: { "score": <integer 0-100>, "explanation": "<max 2 sentences>" }
+Score based primarily on budget overlap and location match; secondarily on
+room type / furnishing preference alignment and move-in date proximity.
+```
+
+**User prompt** (values interpolated per request)
+```
+Room listing:
+- Location: Andheri West, Mumbai
+- Rent: ₹12000/month
+- Room type: single
+- Furnishing: furnished
+- Available from: 2026-09-01
+
+Tenant profile:
+- Preferred location: Andheri West, Mumbai
+- Budget range: ₹8000 - ₹15000
+- Preferred room type: single
+- Move-in date: 2026-09-14
+
+Compute a compatibility score (0-100) based on budget and location match,
+with room type and move-in date as secondary factors.
+Return JSON: { "score": number, "explanation": string }
+```
+
+**Example model output** (`response_format: json_object`, temp 0.1)
+```json
+{
+  "score": 90,
+  "explanation": "The rent and location align well with the tenant's budget and preferred area, and the room type matches their preference, with a move-in only 13 days after availability."
+}
+```
+
+**Example fallback output** (LLM unavailable — deterministic rules)
+```json
+{
+  "score": 100,
+  "explanation": "Rent ₹12,000 fits your ₹8,000–₹15,000 budget · Located in your preferred area · Matches your preferred single room",
+  "source": "fallback"
+}
+```
+
+The `{ score, explanation, source }` triple is persisted to `compatibility_scores` against the `(tenant_id, listing_id)` pair and reused on every subsequent read (never recomputed unless the profile or listing changes).
 
 ---
 
