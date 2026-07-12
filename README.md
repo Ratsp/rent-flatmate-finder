@@ -25,6 +25,8 @@ Watch the complete walkthrough of the **Rent & Flatmate Finder** application, sh
 🔗 **Demo Video:**  
 📹 **[Watch Demo Video](https://drive.google.com/file/d/1Fdftey1kujwDFrCLuAbIOOWczZ77xXWg/view?usp=sharing)**
 
+> ⏩ **Tip:** Play at **1.75x–2x speed** to get through the walkthrough faster.
+
 ---
 
 
